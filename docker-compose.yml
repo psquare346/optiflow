@@ -1,0 +1,12 @@
+# OptiFlow — Docker Compose
+# Run with: docker compose up
+# Then open: http://localhost:3000
+
+services:
+  optiflow:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+    restart: unless-stopped

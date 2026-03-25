@@ -1,0 +1,31 @@
+# Dependencies and build artifacts (rebuilt inside container)
+node_modules
+src-tauri/target
+
+# Git
+.git
+.gitignore
+
+# IDE
+.vscode
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+# Output
+dist
+dist-ssr
+
+# Logs
+*.log
+npm-debug.log*
+
+# Agent files
+.agent
+.agents
+
+# OS
+.DS_Store
+Thumbs.db
