@@ -340,6 +340,7 @@ function App() {
             ]}
             onAdd={async (row) => { await invoke("add_location", { location: { ...row, latitude: null, longitude: null, active: true } }); refreshData(); }}
             onDelete={async (row) => { await invoke("delete_location", { id: row.id }); refreshData(); }}
+            onUpdate={async (_old, row) => { await invoke("delete_location", { id: _old.id }); await invoke("add_location", { location: row }); refreshData(); }}
           />}
           {page === "products" && <DataTablePage data={products} title="Products"
             columns={["id", "name", "product_type", "unit_of_measure", "yield_rate", "active"]} getLabel={getLabel}
@@ -351,6 +352,7 @@ function App() {
             ]}
             onAdd={async (row) => { await invoke("add_product", { product: { ...row, weight_kg: 0, volume_m3: 0, shelf_life_days: null, active: true } }); refreshData(); }}
             onDelete={async (row) => { await invoke("delete_product", { id: row.id }); refreshData(); }}
+            onUpdate={async (_old, row) => { await invoke("delete_product", { id: _old.id }); await invoke("add_product", { product: row }); refreshData(); }}
           />}
           {page === "resources" && <DataTablePage data={resources} title="Resources"
             columns={["id", "name", "location_id", "capacity_per_period", "cost_per_unit", "active"]} getLabel={getLabel}
@@ -362,6 +364,7 @@ function App() {
             ]}
             onAdd={async (row) => { await invoke("add_resource", { resource: { ...row, capacity_type: "Units", setup_cost: 0, active: true } }); refreshData(); }}
             onDelete={async (row) => { await invoke("delete_resource", { id: row.id }); refreshData(); }}
+            onUpdate={async (_old, row) => { await invoke("delete_resource", { id: _old.id }); await invoke("add_resource", { resource: row }); refreshData(); }}
           />}
           {page === "transport" && <DataTablePage data={transportLanes} title="Transport Lanes"
             columns={["from_location_id", "to_location_id", "mode", "cost_per_unit", "lead_time_days", "lead_time_periods", "tariff_rate"]} getLabel={getLabel}
@@ -376,6 +379,7 @@ function App() {
             ]}
             onAdd={async (row) => { await invoke("add_transport_lane", { lane: { ...row, id: crypto.randomUUID(), fixed_cost_per_shipment: 0, min_lot_size: 0, max_lot_size: 1.7976931348623157e+308, co2_per_unit: 0, active: true } }); refreshData(); }}
             onDelete={async (row) => { await invoke("delete_transport_lane", { id: row.id }); refreshData(); }}
+            onUpdate={async (_old, row) => { await invoke("delete_transport_lane", { id: _old.id }); await invoke("add_transport_lane", { lane: row }); refreshData(); }}
           />}
           {page === "suppliers" && <DataTablePage data={suppliers} title="Suppliers"
             columns={["id", "name", "country", "lead_time_days", "capacity_per_period", "quality_rating", "active"]} getLabel={getLabel}
@@ -387,6 +391,7 @@ function App() {
             ]}
             onAdd={async (row) => { await invoke("add_supplier", { supplier: { ...row, active: true } }); refreshData(); }}
             onDelete={async (row) => { await invoke("delete_supplier", { id: row.id }); refreshData(); }}
+            onUpdate={async (_old, row) => { await invoke("delete_supplier", { id: _old.id }); await invoke("add_supplier", { supplier: row }); refreshData(); }}
           />}
           {page === "customers" && <DataTablePage data={customers} title="Customers"
             columns={["id", "name", "priority", "service_level_target", "country", "active"]} getLabel={getLabel}
@@ -397,6 +402,7 @@ function App() {
             ]}
             onAdd={async (row) => { await invoke("add_customer", { customer: { ...row, active: true } }); refreshData(); }}
             onDelete={async (row) => { await invoke("delete_customer", { id: row.id }); refreshData(); }}
+            onUpdate={async (_old, row) => { await invoke("delete_customer", { id: _old.id }); await invoke("add_customer", { customer: row }); refreshData(); }}
           />}
           {page === "demands" && <DataTablePage data={demands} title="Demand"
             columns={["product_id", "location_id", "period", "quantity", "demand_type", "customer_id", "is_firm", "priority", "non_delivery_cost"]} getLabel={getLabel}
@@ -413,6 +419,7 @@ function App() {
             ]}
             onAdd={async (row) => { await invoke("add_demand", { demand: { ...row, id: crypto.randomUUID(), late_delivery_cost: 5, customer_id: row.customer_id || null } }); refreshData(); }}
             onDelete={async (row) => { await invoke("delete_demand", { id: row.id }); refreshData(); }}
+            onUpdate={async (_old, row) => { await invoke("delete_demand", { id: _old.id }); await invoke("add_demand", { demand: row }); refreshData(); }}
           />}
           {page === "planned_receipts" && <DataTablePage data={plannedReceipts} title="Planned Receipts"
             columns={["product_id", "location_id", "period", "quantity", "receipt_type", "source", "is_firm"]} getLabel={getLabel}
@@ -427,6 +434,7 @@ function App() {
             ]}
             onAdd={async (row) => { await invoke("add_planned_receipt", { receipt: { ...row, id: crypto.randomUUID(), source: row.source || null } }); refreshData(); }}
             onDelete={async (row) => { await invoke("delete_planned_receipt", { id: row.id }); refreshData(); }}
+            onUpdate={async (_old, row) => { await invoke("delete_planned_receipt", { id: _old.id }); await invoke("add_planned_receipt", { receipt: row }); refreshData(); }}
           />}
           {page === "pricing" && <DataTablePage data={productPrices} title="Product Prices"
             columns={["product_id", "location_id", "customer_id", "period", "price_per_unit"]} getLabel={getLabel}
@@ -452,6 +460,7 @@ function App() {
             ]}
             onAdd={async (row) => { await invoke("add_product_location", { pl: { ...row, can_store: true, active: true, yield_rate_override: null, production_lead_time: 0, procurement_cost: 0, procurement_lead_time: 0, min_lot_size: 0, max_lot_size: 1.7976931348623157e+308 } }); refreshData(); }}
             onDelete={async (row) => { await invoke("delete_product_location", { productId: row.product_id, locationId: row.location_id }); refreshData(); }}
+            onUpdate={async (_old, row) => { await invoke("delete_product_location", { productId: _old.product_id, locationId: _old.location_id }); await invoke("add_product_location", { pl: row }); refreshData(); }}
           />}
           {page === "product_resources" && <DataTablePage data={productResources} title="Product-Resource"
             columns={["product_id", "resource_id", "location_id", "consumption_rate", "production_rate", "priority"]} getLabel={getLabel}
@@ -465,6 +474,7 @@ function App() {
             ]}
             onAdd={async (row) => { await invoke("add_product_resource", { pr: { ...row, setup_time: 0, changeover_cost: 0, version_id: "v1", active: true } }); refreshData(); }}
             onDelete={async (row) => { await invoke("delete_product_resource", { productId: row.product_id, resourceId: row.resource_id }); refreshData(); }}
+            onUpdate={async (_old, row) => { await invoke("delete_product_resource", { productId: _old.product_id, resourceId: _old.resource_id }); await invoke("add_product_resource", { pr: row }); refreshData(); }}
           />}
           {page === "bom" && <DataTablePage data={bomEntries} title="Bill of Materials"
             columns={["output_product_id", "input_product_id", "quantity_per", "yield_rate"]} getLabel={getLabel}
@@ -574,28 +584,129 @@ function buildDefaults(schema: ColSchema[]): Record<string, any> {
   return obj;
 }
 
-// ─── Interactive Data Table ─────────────────────────────────
+// ─── Interactive Data Table (with inline edit, CSV export/import) ──
 
-function DataTablePage({ data, columns, schema, getLabel, title, onAdd, onDelete }: {
+function DataTablePage({ data, columns, schema, getLabel, title, onAdd, onDelete, onUpdate }: {
   data: any[]; columns: string[]; schema?: ColSchema[]; getLabel: (k: string) => string; title: string;
-  onAdd?: (row: any) => void; onDelete?: (row: any) => void;
+  onAdd?: (row: any) => void; onDelete?: (row: any) => void; onUpdate?: (oldRow: any, newRow: any) => void;
 }) {
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState<Record<string, any>>(() => schema ? buildDefaults(schema) : {});
+  const [editCell, setEditCell] = useState<{ row: number; col: string } | null>(null);
+  const [editValue, setEditValue] = useState<string>("");
+  const editRef = useRef<HTMLInputElement | HTMLSelectElement>(null);
 
   const handleAdd = () => {
     if (onAdd) { onAdd(formData); setFormData(schema ? buildDefaults(schema) : {}); setShowForm(false); }
   };
 
+  // ─── Inline Edit ───
+  const startEdit = (rowIdx: number, colKey: string, currentValue: any) => {
+    if (!onUpdate) return;
+    setEditCell({ row: rowIdx, col: colKey });
+    setEditValue(currentValue === null || currentValue === undefined ? "" :
+      currentValue === 1.7976931348623157e+308 ? "" : String(currentValue));
+  };
+
+  const commitEdit = (rowIdx: number, colKey: string) => {
+    if (!onUpdate || !editCell) return;
+    const row = data[rowIdx];
+    const colSchema = schema?.find(s => s.key === colKey);
+    let newVal: any = editValue;
+    if (colSchema?.type === "number") newVal = editValue === "" ? 0 : Number(editValue);
+    else if (colSchema?.type === "bool") newVal = editValue === "true";
+    if (row[colKey] !== newVal) {
+      const updated = { ...row, [colKey]: newVal };
+      onUpdate(row, updated);
+    }
+    setEditCell(null);
+  };
+
+  const cancelEdit = () => setEditCell(null);
+
+  useEffect(() => { if (editRef.current) editRef.current.focus(); }, [editCell]);
+
+  // ─── CSV Export ───
+  const exportCSV = () => {
+    if (data.length === 0) return;
+    const header = columns.join(",");
+    const rows = data.map(row =>
+      columns.map(col => {
+        const v = row[col];
+        if (v === null || v === undefined) return "";
+        if (v === 1.7976931348623157e+308) return "MAX";
+        if (typeof v === "string" && (v.includes(",") || v.includes('"'))) return `"${v.replace(/"/g, '""')}"`;
+        return String(v);
+      }).join(",")
+    );
+    const csv = [header, ...rows].join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = `${title.toLowerCase().replace(/\s+/g, "_")}.csv`; a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // ─── CSV Import ───
+  const importCSV = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const text = e.target?.result as string;
+      if (!text || !onAdd) return;
+      const lines = text.split(/\r?\n/).filter(l => l.trim());
+      if (lines.length < 2) return;
+      const headers = lines[0].split(",").map(h => h.trim().replace(/^"|"$/g, ""));
+      let imported = 0;
+      for (let i = 1; i < lines.length; i++) {
+        const vals = parseCSVLine(lines[i]);
+        if (vals.length !== headers.length) continue;
+        const row: Record<string, any> = {};
+        headers.forEach((h, idx) => {
+          const colSchema = schema?.find(s => s.key === h);
+          let v: any = vals[idx];
+          if (v === "MAX" || v === "∞") v = 1.7976931348623157e+308;
+          else if (colSchema?.type === "number") v = v === "" ? 0 : Number(v);
+          else if (colSchema?.type === "bool") v = v === "true" || v === "✅" || v === "1";
+          row[h] = v;
+        });
+        onAdd(row);
+        imported++;
+      }
+      alert(`Imported ${imported} records into ${title}`);
+    };
+    reader.readAsText(file);
+  };
+
+  const handleFileSelect = () => {
+    const input = document.createElement("input");
+    input.type = "file"; input.accept = ".csv";
+    input.onchange = (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (file) importCSV(file);
+    };
+    input.click();
+  };
+
+  // ─── Render ───
+  const getColSchema = (colKey: string) => schema?.find(s => s.key === colKey);
+
   return (
     <div className="animate-in">
-      <div style={{ marginBottom: 16, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      <div style={{ marginBottom: 16, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
         <span style={{ color: "var(--text-secondary)", fontSize: 13 }}>{data.length} records</span>
-        {onAdd && schema && (
-          <button className="btn btn-primary btn-sm" onClick={() => setShowForm(!showForm)}>
-            {showForm ? "✕ Cancel" : "➕ Add Record"}
-          </button>
-        )}
+        <div style={{ display: "flex", gap: 6 }}>
+          {data.length > 0 && (
+            <button className="btn btn-ghost btn-sm" onClick={exportCSV} title="Download CSV">📥 Export CSV</button>
+          )}
+          {onAdd && schema && (
+            <button className="btn btn-ghost btn-sm" onClick={handleFileSelect} title="Upload CSV">📤 Import CSV</button>
+          )}
+          {onAdd && schema && (
+            <button className="btn btn-primary btn-sm" onClick={() => setShowForm(!showForm)}>
+              {showForm ? "✕ Cancel" : "➕ Add Record"}
+            </button>
+          )}
+        </div>
       </div>
 
       {showForm && schema && (
@@ -632,14 +743,47 @@ function DataTablePage({ data, columns, schema, getLabel, title, onAdd, onDelete
       )}
 
       {data.length === 0 && !showForm ? (
-        <div className="empty-state"><div className="empty-state-icon">📭</div><div className="empty-state-title">No {title} Yet</div><div className="empty-state-desc">Click "➕ Add Record" or load demo data.</div></div>
+        <div className="empty-state"><div className="empty-state-icon">📭</div><div className="empty-state-title">No {title} Yet</div><div className="empty-state-desc">Click "➕ Add Record", import a CSV, or load demo data.</div></div>
       ) : data.length > 0 && (
         <div className="data-table-wrapper">
           <table className="data-table">
             <thead><tr>{columns.map((col) => <th key={col}>{getLabel(col)}</th>)}{onDelete && <th style={{ width: 40 }}>Del</th>}</tr></thead>
-            <tbody>{data.map((row, i) => (
-              <tr key={i}>
-                {columns.map((col) => <td key={col}>{formatCell(row[col])}</td>)}
+            <tbody>{data.map((row, ri) => (
+              <tr key={ri}>
+                {columns.map((col) => {
+                  const isEditing = editCell?.row === ri && editCell?.col === col;
+                  const cs = getColSchema(col);
+                  if (isEditing && cs) {
+                    return <td key={col} className="editing-cell">{cs.type === "select" ? (
+                      <select ref={editRef as any} className="inline-edit-input" value={editValue}
+                        onChange={(e) => setEditValue(e.target.value)}
+                        onBlur={() => commitEdit(ri, col)}
+                        onKeyDown={(e) => { if (e.key === "Enter") commitEdit(ri, col); if (e.key === "Escape") cancelEdit(); }}>
+                        <option value="">—</option>
+                        {cs.options?.map(o => <option key={o} value={o}>{o}</option>)}
+                      </select>
+                    ) : cs.type === "bool" ? (
+                      <select ref={editRef as any} className="inline-edit-input" value={editValue}
+                        onChange={(e) => { setEditValue(e.target.value); }}
+                        onBlur={() => commitEdit(ri, col)}
+                        onKeyDown={(e) => { if (e.key === "Enter") commitEdit(ri, col); if (e.key === "Escape") cancelEdit(); }}>
+                        <option value="true">✅ Yes</option>
+                        <option value="false">❌ No</option>
+                      </select>
+                    ) : (
+                      <input ref={editRef as any} className="inline-edit-input"
+                        type={cs.type === "number" ? "number" : "text"} step="any"
+                        value={editValue} onChange={(e) => setEditValue(e.target.value)}
+                        onBlur={() => commitEdit(ri, col)}
+                        onKeyDown={(e) => { if (e.key === "Enter") commitEdit(ri, col); if (e.key === "Escape") cancelEdit(); }} />
+                    )}</td>;
+                  }
+                  return <td key={col}
+                    className={onUpdate && cs ? "editable-cell" : ""}
+                    onClick={() => cs && startEdit(ri, col, row[col])}
+                    title={onUpdate && cs ? "Click to edit" : undefined}
+                  >{formatCell(row[col])}</td>;
+                })}
                 {onDelete && <td><button className="btn btn-ghost btn-sm" style={{ color: "var(--danger)", padding: "2px 6px" }}
                   onClick={() => onDelete(row)}>🗑️</button></td>}
               </tr>
@@ -649,6 +793,26 @@ function DataTablePage({ data, columns, schema, getLabel, title, onAdd, onDelete
       )}
     </div>
   );
+}
+
+function parseCSVLine(line: string): string[] {
+  const result: string[] = [];
+  let current = "";
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (inQuotes) {
+      if (ch === '"' && line[i + 1] === '"') { current += '"'; i++; }
+      else if (ch === '"') inQuotes = false;
+      else current += ch;
+    } else {
+      if (ch === '"') inQuotes = true;
+      else if (ch === ',') { result.push(current.trim()); current = ""; }
+      else current += ch;
+    }
+  }
+  result.push(current.trim());
+  return result;
 }
 
 function formatCell(value: unknown): string {

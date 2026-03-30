@@ -410,6 +410,36 @@ body {
   border-bottom: none;
 }
 
+/* ─── Editable Cells ─── */
+.editable-cell {
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.editable-cell:hover {
+  background: rgba(99, 102, 241, 0.08) !important;
+  outline: 1px dashed var(--border-primary);
+  outline-offset: -1px;
+}
+
+.editing-cell {
+  padding: 4px 6px !important;
+  background: var(--bg-input) !important;
+}
+
+.inline-edit-input {
+  width: 100%;
+  padding: 6px 10px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-focus);
+  border-radius: 4px;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-family: var(--font-sans);
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+}
+
 /* ─── Status Badges ─── */
 .badge {
   display: inline-flex;
