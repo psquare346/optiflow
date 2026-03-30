@@ -3,6 +3,7 @@ pub mod models;
 pub mod solver;
 pub mod state;
 pub mod validator;
+pub mod explainer;
 
 // Tauri-specific modules (commands use #[tauri::command] macro)
 #[cfg(feature = "tauri-app")]
@@ -75,6 +76,8 @@ pub fn run() {
             commands::set_alias,
             // Demo
             commands::load_demo_data,
+            // Explainer
+            commands::explain_decision,
         ])
         .run(tauri::generate_context!())
         .expect("error running OptiFlow");

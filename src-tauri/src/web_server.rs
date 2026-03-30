@@ -18,6 +18,7 @@ use tower_http::cors::CorsLayer;
 use optiflow_lib::models::*;
 use optiflow_lib::solver;
 use optiflow_lib::validator;
+use optiflow_lib::explainer;
 
 // ─── Shared state (same as Tauri AppState but with Arc) ─────
 
@@ -105,7 +106,9 @@ async fn main() {
         .route("/get_aliases", get(get_aliases))
         .route("/set_alias", post(set_alias))
         // Demo
-        .route("/load_demo_data", post(load_demo_data));
+        .route("/load_demo_data", post(load_demo_data))
+        // Explainer
+        .route("/explain_decision", post(explain_decision));
 
     let app = Router::new()
         .nest("/api", api)
@@ -576,3 +579,25 @@ async fn load_demo_data(AxState(state): AxState<AppState>) -> impl IntoResponse 
     );
     Json(msg)
 }
+
+// ═══════════════════════════════════════════════════════════════
+// EXPLAINER
+// ═══════════════════════════════════════════════════════════════
+
+#[derive(Deserialize)]
+struct ExplainPayload { question: String }
+
+async fn explain_decision(AxState(state): AxState<AppState>, Json(p): Json<ExplainPayload>) -> impl IntoResponse {
+    let model = state.model.lock().unwrap();
+    let last = state.last_result.lock().unwrap();
+    match last.as_ref() {
+        Some(result) => Json(explainer::explain(&p.question, &model, result)),
+        None => Json(explainer::ExplainResponse {
+            intent: "error".into(),
+            answer: "No optimization results available. Please run the optimizer first.".into(),
+            data_points: vec![],
+            suggestions: vec!["Go to Run Optimizer and click 🚀 Run Optimizer".into()],
+        }),
+    }
+}
+

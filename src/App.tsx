@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { invoke as tauriInvoke } from "@tauri-apps/api/core";
 import "./index.css";
 
@@ -14,6 +14,9 @@ const GET_COMMANDS = new Set([
   "get_bom_entries", "get_sourcing_rules", "get_aliases", "validate_model",
   "get_last_result",
 ]);
+
+interface ExplainDataPoint { label: string; value: string; context: string | null; }
+interface ExplainResponse { intent: string; answer: string; data_points: ExplainDataPoint[]; suggestions: string[]; }
 
 async function invoke<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
   if (isTauri) {
@@ -762,6 +765,7 @@ function ResultsPage({ result, getLabel, fmtPct, fmtCost, fmt }: {
   fmtPct: (n: number) => string; fmtCost: (n: number) => string; fmt: (n: number, d?: number) => string;
 }) {
   const [tab, setTab] = useState<"kpis" | "production" | "transport" | "inventory" | "unmet" | "capacity">("kpis");
+  const [showExplain, setShowExplain] = useState(false);
 
   if (!result) {
     return <div className="empty-state animate-in"><div className="empty-state-icon">🧮</div><div className="empty-state-title">No Results Yet</div><div className="empty-state-desc">Run the optimizer to see results.</div></div>;
@@ -770,99 +774,257 @@ function ResultsPage({ result, getLabel, fmtPct, fmtCost, fmt }: {
   const statusStr = typeof result.status === "string" ? result.status : `Error: ${(result.status as { Error: string }).Error}`;
 
   return (
-    <div className="animate-in">
-      <div style={{ display: "flex", gap: 16, marginBottom: 20, alignItems: "center" }}>
-        <span className={`badge ${statusStr === "Optimal" ? "badge-success" : statusStr === "Feasible" ? "badge-warning" : "badge-danger"}`}>{statusStr}</span>
-        <span style={{ color: "var(--text-secondary)", fontSize: 13 }}>Solved in {result.solve_time_ms}ms · Objective: {fmtCost(result.objective_value)}</span>
-      </div>
-
-      <div className="tabs">
-        {(["kpis", "production", "transport", "inventory", "unmet", "capacity"] as const).map((t) => (
-          <button key={t} className={`tab ${tab === t ? "active" : ""}`} onClick={() => setTab(t)}>
-            {t === "kpis" ? "📊 KPIs" : t === "production" ? "🏭 Production" : t === "transport" ? "🚚 Transport" : t === "inventory" ? "📦 Inventory" : t === "unmet" ? "⚠️ Unmet" : "📏 Capacity"}
-          </button>
-        ))}
-      </div>
-
-      {tab === "kpis" && (
-        <div className="kpi-grid">
-          <KpiCard label={getLabel("demand_fulfillment_pct")} value={fmtPct(result.kpis.demand_fulfillment_pct)} colorClass={result.kpis.demand_fulfillment_pct >= 95 ? "success" : "warning"} />
-          <KpiCard label={getLabel("total_cost")} value={fmtCost(result.kpis.total_cost)} colorClass="accent" />
-          <KpiCard label={getLabel("cost_per_unit_delivered")} value={fmtCost(result.kpis.cost_per_unit_delivered)} colorClass="info" />
-          <KpiCard label={getLabel("total_delivered")} value={fmt(result.kpis.total_delivered)} colorClass="success" />
-          <KpiCard label={getLabel("total_unmet")} value={fmt(result.kpis.total_unmet)} colorClass={result.kpis.total_unmet > 0 ? "danger" : "success"} />
-          <KpiCard label={getLabel("production_cost")} value={fmtCost(result.kpis.production_cost)} colorClass="accent" />
-          <KpiCard label={getLabel("transport_cost")} value={fmtCost(result.kpis.transport_cost)} colorClass="accent" />
-          <KpiCard label={getLabel("holding_cost")} value={fmtCost(result.kpis.holding_cost)} colorClass="accent" />
-          <KpiCard label={getLabel("penalty_cost")} value={fmtCost(result.kpis.penalty_cost)} colorClass={result.kpis.penalty_cost > 0 ? "warning" : "success"} />
-          <KpiCard label={getLabel("avg_capacity_utilization")} value={fmtPct(result.kpis.avg_capacity_utilization)} colorClass="info" />
-          <KpiCard label={getLabel("avg_inventory")} value={fmt(result.kpis.avg_inventory)} colorClass="info" />
-          <KpiCard label="Peak Inventory" value={fmt(result.kpis.peak_inventory)} colorClass="info" />
+    <div className="animate-in" style={{ display: "flex", height: "100%" }}>
+      <div style={{ flex: 1, minWidth: 0, overflowY: "auto" }}>
+        <div style={{ display: "flex", gap: 16, marginBottom: 20, alignItems: "center" }}>
+          <span className={`badge ${statusStr === "Optimal" ? "badge-success" : statusStr === "Feasible" ? "badge-warning" : "badge-danger"}`}>{statusStr}</span>
+          <span style={{ color: "var(--text-secondary)", fontSize: 13 }}>Solved in {result.solve_time_ms}ms · Objective: {fmtCost(result.objective_value)}</span>
         </div>
-      )}
 
-      {tab === "production" && (
-        <div className="data-table-wrapper"><table className="data-table">
-          <thead><tr><th>Product</th><th>Location</th><th>Resource</th><th>Period</th><th>Quantity</th><th>Cost</th></tr></thead>
-          <tbody>{result.production_plan.map((p, i) => (
-            <tr key={i}><td>{p.product_id}</td><td>{p.location_id}</td><td>{p.resource_id}</td><td>P{p.period + 1}</td><td>{fmt(p.quantity)}</td><td>{fmtCost(p.cost)}</td></tr>
-          ))}</tbody>
-        </table></div>
-      )}
+        <div className="tabs">
+          {(["kpis", "production", "transport", "inventory", "unmet", "capacity"] as const).map((t) => (
+            <button key={t} className={`tab ${tab === t ? "active" : ""}`} onClick={() => setTab(t)}>
+              {t === "kpis" ? "📊 KPIs" : t === "production" ? "🏭 Production" : t === "transport" ? "🚚 Transport" : t === "inventory" ? "📦 Inventory" : t === "unmet" ? "⚠️ Unmet" : "📏 Capacity"}
+            </button>
+          ))}
+        </div>
 
-      {tab === "transport" && (
-        <div className="data-table-wrapper"><table className="data-table">
-          <thead><tr><th>Product</th><th>From</th><th>To</th><th>Mode</th><th>Period</th><th>Quantity</th><th>Cost</th></tr></thead>
-          <tbody>{result.transport_plan.map((t, i) => (
-            <tr key={i}><td>{t.product_id}</td><td>{t.from_location_id}</td><td>{t.to_location_id}</td><td>{String(t.mode)}</td><td>P{t.period + 1}</td><td>{fmt(t.quantity)}</td><td>{fmtCost(t.cost)}</td></tr>
-          ))}</tbody>
-        </table></div>
-      )}
+        {tab === "kpis" && (
+          <div className="kpi-grid">
+            <KpiCard label={getLabel("demand_fulfillment_pct")} value={fmtPct(result.kpis.demand_fulfillment_pct)} colorClass={result.kpis.demand_fulfillment_pct >= 95 ? "success" : "warning"} />
+            <KpiCard label={getLabel("total_cost")} value={fmtCost(result.kpis.total_cost)} colorClass="accent" />
+            <KpiCard label={getLabel("cost_per_unit_delivered")} value={fmtCost(result.kpis.cost_per_unit_delivered)} colorClass="info" />
+            <KpiCard label={getLabel("total_delivered")} value={fmt(result.kpis.total_delivered)} colorClass="success" />
+            <KpiCard label={getLabel("total_unmet")} value={fmt(result.kpis.total_unmet)} colorClass={result.kpis.total_unmet > 0 ? "danger" : "success"} />
+            <KpiCard label={getLabel("production_cost")} value={fmtCost(result.kpis.production_cost)} colorClass="accent" />
+            <KpiCard label={getLabel("transport_cost")} value={fmtCost(result.kpis.transport_cost)} colorClass="accent" />
+            <KpiCard label={getLabel("holding_cost")} value={fmtCost(result.kpis.holding_cost)} colorClass="accent" />
+            <KpiCard label={getLabel("penalty_cost")} value={fmtCost(result.kpis.penalty_cost)} colorClass={result.kpis.penalty_cost > 0 ? "warning" : "success"} />
+            <KpiCard label={getLabel("avg_capacity_utilization")} value={fmtPct(result.kpis.avg_capacity_utilization)} colorClass="info" />
+            <KpiCard label={getLabel("avg_inventory")} value={fmt(result.kpis.avg_inventory)} colorClass="info" />
+            <KpiCard label="Peak Inventory" value={fmt(result.kpis.peak_inventory)} colorClass="info" />
+          </div>
+        )}
 
-      {tab === "inventory" && (
-        result.inventory_plan.length === 0 ? (
-          <div className="empty-state"><div className="empty-state-icon">📦</div><div className="empty-state-title">No Inventory Data</div><div className="empty-state-desc">Add Product-Location records to enable inventory tracking.</div></div>
-        ) : (
+        {tab === "production" && (
           <div className="data-table-wrapper"><table className="data-table">
-            <thead><tr><th>Product</th><th>Location</th><th>Period</th><th>Stock Level</th><th>Holding Cost</th><th>SS Delta</th></tr></thead>
-            <tbody>{result.inventory_plan.map((inv, i) => (
+            <thead><tr><th>Product</th><th>Location</th><th>Resource</th><th>Period</th><th>Quantity</th><th>Cost</th></tr></thead>
+            <tbody>{result.production_plan.map((p, i) => (
+              <tr key={i}><td>{p.product_id}</td><td>{p.location_id}</td><td>{p.resource_id}</td><td>P{p.period + 1}</td><td>{fmt(p.quantity)}</td><td>{fmtCost(p.cost)}</td></tr>
+            ))}</tbody>
+          </table></div>
+        )}
+
+        {tab === "transport" && (
+          <div className="data-table-wrapper"><table className="data-table">
+            <thead><tr><th>Product</th><th>From</th><th>To</th><th>Mode</th><th>Period</th><th>Quantity</th><th>Cost</th></tr></thead>
+            <tbody>{result.transport_plan.map((t, i) => (
+              <tr key={i}><td>{t.product_id}</td><td>{t.from_location_id}</td><td>{t.to_location_id}</td><td>{String(t.mode)}</td><td>P{t.period + 1}</td><td>{fmt(t.quantity)}</td><td>{fmtCost(t.cost)}</td></tr>
+            ))}</tbody>
+          </table></div>
+        )}
+
+        {tab === "inventory" && (
+          result.inventory_plan.length === 0 ? (
+            <div className="empty-state"><div className="empty-state-icon">📦</div><div className="empty-state-title">No Inventory Data</div><div className="empty-state-desc">Add Product-Location records to enable inventory tracking.</div></div>
+          ) : (
+            <div className="data-table-wrapper"><table className="data-table">
+              <thead><tr><th>Product</th><th>Location</th><th>Period</th><th>Stock Level</th><th>Holding Cost</th><th>SS Delta</th></tr></thead>
+              <tbody>{result.inventory_plan.map((inv, i) => (
+                <tr key={i}>
+                  <td>{inv.product_id}</td><td>{inv.location_id}</td><td>P{inv.period + 1}</td>
+                  <td>{fmt(inv.quantity)}</td><td>{fmtCost(inv.holding_cost)}</td>
+                  <td style={{ color: inv.safety_stock_delta < 0 ? "var(--danger)" : "var(--success)" }}>
+                    {inv.safety_stock_delta >= 0 ? "+" : ""}{fmt(inv.safety_stock_delta)}
+                  </td>
+                </tr>
+              ))}</tbody>
+            </table></div>
+          )
+        )}
+
+        {tab === "unmet" && (
+          result.unmet_demand.length === 0 ? (
+            <div className="empty-state"><div className="empty-state-icon">✅</div><div className="empty-state-title">All Demand Met!</div></div>
+          ) : (
+            <div className="data-table-wrapper"><table className="data-table">
+              <thead><tr><th>Product</th><th>Location</th><th>Period</th><th>Unmet Qty</th><th>Penalty</th><th>Reason</th></tr></thead>
+              <tbody>{result.unmet_demand.map((u, i) => (
+                <tr key={i}><td>{u.product_id}</td><td>{u.location_id}</td><td>P{u.period + 1}</td>
+                  <td style={{ color: "var(--danger)" }}>{fmt(u.unmet_quantity)}</td><td>{fmtCost(u.penalty_cost)}</td><td>{u.reason}</td></tr>
+              ))}</tbody>
+            </table></div>
+          )
+        )}
+
+        {tab === "capacity" && (
+          <div className="data-table-wrapper"><table className="data-table">
+            <thead><tr><th>Resource</th><th>Location</th><th>Period</th><th>Used</th><th>Available</th><th>Utilization</th></tr></thead>
+            <tbody>{result.capacity_utilization.map((c, i) => (
               <tr key={i}>
-                <td>{inv.product_id}</td><td>{inv.location_id}</td><td>P{inv.period + 1}</td>
-                <td>{fmt(inv.quantity)}</td><td>{fmtCost(inv.holding_cost)}</td>
-                <td style={{ color: inv.safety_stock_delta < 0 ? "var(--danger)" : "var(--success)" }}>
-                  {inv.safety_stock_delta >= 0 ? "+" : ""}{fmt(inv.safety_stock_delta)}
-                </td>
+                <td>{c.resource_id}</td><td>{c.location_id}</td><td>P{c.period + 1}</td><td>{fmt(c.used)}</td><td>{fmt(c.available)}</td>
+                <td><span className={`badge ${c.utilization_pct > 95 ? "badge-danger" : c.utilization_pct > 80 ? "badge-warning" : "badge-success"}`}>{fmtPct(c.utilization_pct)}</span></td>
               </tr>
             ))}</tbody>
           </table></div>
-        )
-      )}
+        )}
+      </div>
 
-      {tab === "unmet" && (
-        result.unmet_demand.length === 0 ? (
-          <div className="empty-state"><div className="empty-state-icon">✅</div><div className="empty-state-title">All Demand Met!</div></div>
-        ) : (
-          <div className="data-table-wrapper"><table className="data-table">
-            <thead><tr><th>Product</th><th>Location</th><th>Period</th><th>Unmet Qty</th><th>Penalty</th><th>Reason</th></tr></thead>
-            <tbody>{result.unmet_demand.map((u, i) => (
-              <tr key={i}><td>{u.product_id}</td><td>{u.location_id}</td><td>P{u.period + 1}</td>
-                <td style={{ color: "var(--danger)" }}>{fmt(u.unmet_quantity)}</td><td>{fmtCost(u.penalty_cost)}</td><td>{u.reason}</td></tr>
-            ))}</tbody>
-          </table></div>
-        )
-      )}
+      {showExplain && <ExplainPanel onClose={() => setShowExplain(false)} />}
 
-      {tab === "capacity" && (
-        <div className="data-table-wrapper"><table className="data-table">
-          <thead><tr><th>Resource</th><th>Location</th><th>Period</th><th>Used</th><th>Available</th><th>Utilization</th></tr></thead>
-          <tbody>{result.capacity_utilization.map((c, i) => (
-            <tr key={i}>
-              <td>{c.resource_id}</td><td>{c.location_id}</td><td>P{c.period + 1}</td><td>{fmt(c.used)}</td><td>{fmt(c.available)}</td>
-              <td><span className={`badge ${c.utilization_pct > 95 ? "badge-danger" : c.utilization_pct > 80 ? "badge-warning" : "badge-success"}`}>{fmtPct(c.utilization_pct)}</span></td>
-            </tr>
-          ))}</tbody>
-        </table></div>
-      )}
+      <button
+        className={`explain-toggle ${showExplain ? "open" : ""}`}
+        onClick={() => setShowExplain(!showExplain)}
+        title="Ask about optimizer decisions"
+      >
+        {showExplain ? "✕" : "💬"}
+      </button>
+    </div>
+  );
+}
+
+// ─── Explain Panel (Chat) ────────────────────────────────────
+
+interface ChatMessage {
+  role: "user" | "system";
+  text: string;
+  dataPoints?: ExplainDataPoint[];
+  suggestions?: string[];
+}
+
+function ExplainPanel({ onClose }: { onClose: () => void }) {
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(() => { scrollToBottom(); }, [messages]);
+
+  const askQuestion = async (question: string) => {
+    if (!question.trim()) return;
+    const userMsg: ChatMessage = { role: "user", text: question };
+    setMessages((prev) => [...prev, userMsg]);
+    setInput("");
+    setLoading(true);
+
+    try {
+      const resp = await invoke<ExplainResponse>("explain_decision", { question });
+      const sysMsg: ChatMessage = {
+        role: "system",
+        text: resp.answer,
+        dataPoints: resp.data_points,
+        suggestions: resp.suggestions,
+      };
+      setMessages((prev) => [...prev, sysMsg]);
+    } catch (e) {
+      setMessages((prev) => [...prev, { role: "system", text: `Error: ${e}` }]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      askQuestion(input);
+    }
+  };
+
+  const starterQuestions = [
+    "Summarize the results",
+    "Why is there unmet demand?",
+    "What are the bottleneck resources?",
+    "What is driving the cost?",
+    "Why is inventory building up?",
+  ];
+
+  // Render **bold** markdown
+  const renderText = (text: string) => {
+    const parts = text.split(/(\*\*.*?\*\*)/);
+    return parts.map((part, i) =>
+      part.startsWith("**") && part.endsWith("**")
+        ? <strong key={i}>{part.slice(2, -2)}</strong>
+        : part
+    );
+  };
+
+  return (
+    <div className="explain-panel">
+      <div className="explain-header">
+        <div className="explain-header-title">
+          🧠 <span>OptiFlow Explain</span>
+        </div>
+        <button className="explain-close" onClick={onClose}>✕</button>
+      </div>
+
+      <div className="explain-messages">
+        {messages.length === 0 && (
+          <div className="explain-welcome">
+            <div className="explain-welcome-icon">🧠</div>
+            <div className="explain-welcome-title">Ask about the results</div>
+            <div className="explain-welcome-desc">
+              I can explain why the optimizer made specific decisions by analyzing the master data and solver output.
+            </div>
+            <div className="explain-suggestions">
+              {starterQuestions.map((q, i) => (
+                <button key={i} className="explain-suggestion-chip" onClick={() => askQuestion(q)}>{q}</button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {messages.map((msg, i) => (
+          <div key={i} className={`explain-bubble ${msg.role}`}>
+            {msg.role === "user" ? msg.text : renderText(msg.text)}
+            {msg.dataPoints && msg.dataPoints.length > 0 && (
+              <div className="explain-data-cards">
+                {msg.dataPoints.slice(0, 6).map((dp, j) => (
+                  <div key={j} className="explain-data-card">
+                    <div className="explain-data-card-label">{dp.label}</div>
+                    <div className="explain-data-card-value">{dp.value}</div>
+                    {dp.context && <div className="explain-data-card-context">{dp.context}</div>}
+                  </div>
+                ))}
+              </div>
+            )}
+            {msg.suggestions && msg.suggestions.length > 0 && i === messages.length - 1 && (
+              <div className="explain-suggestions">
+                {msg.suggestions.map((s, j) => (
+                  <button key={j} className="explain-suggestion-chip" onClick={() => askQuestion(s)}>{s}</button>
+                ))}
+              </div>
+            )}
+          </div>
+        ))}
+
+        {loading && (
+          <div className="explain-loading">
+            <div className="explain-loading-dots">
+              <div className="explain-loading-dot" />
+              <div className="explain-loading-dot" />
+              <div className="explain-loading-dot" />
+            </div>
+            Analyzing...
+          </div>
+        )}
+        <div ref={messagesEndRef} />
+      </div>
+
+      <div className="explain-input-area">
+        <input
+          className="explain-input"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder="Ask about optimizer decisions..."
+          disabled={loading}
+        />
+        <button className="explain-send" onClick={() => askQuestion(input)} disabled={loading || !input.trim()}>→</button>
+      </div>
     </div>
   );
 }
